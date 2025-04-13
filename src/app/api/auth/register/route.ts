@@ -52,11 +52,15 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Registration error:", error);
 
     return NextResponse.json(
-      { message: "Error creating user: " + (error.message || "Unknown error") },
+      {
+        message:
+          "Error creating user: " +
+          (error instanceof Error ? error.message : "Unknown error"),
+      },
       { status: 500 }
     );
   }
