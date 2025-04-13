@@ -1,0 +1,91 @@
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+
+export interface IUser extends mongoose.Document {
+  name: string;
+  email: string;
+  password?: string;
+  image?: string;
+  emailVerified: boolean;
+  verificationToken?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpire?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  comparePassword: (password: string) => Promise<boolean>;
+}
+
+const UserSchema = new mongoose.Schema<IUser>(
+  {
+    name: {
+      type: String,
+      required: [true, "Please provide a name"],
+      trim: true,
+      maxlength: [50, "Name cannot be more than 50 characters"],
+    },
+    email: {
+      type: String,
+      required: [true, "Please provide an email"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please provide a valid email",
+      ],
+    },
+    password: {
+      type: String,
+      required: [true, "Please provide a password"],
+      minlength: [8, "Password must be at least 8 characters"],
+      select: false, // Don't return password by default
+    },
+    image: {
+      type: String,
+    },
+    emailVerified: {
+      type: mongoose.Schema.Types.Mixed,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+    },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpire: {
+      type: Date,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Hash password before saving
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
+    next();
+    return;
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password || "", salt);
+    next();
+  } catch (error) {
+    next(error as Error);
+  }
+});
+
+// Compare password method
+UserSchema.methods.comparePassword = async function (
+  password: string
+): Promise<boolean> {
+  return await bcrypt.compare(password, this.password || "");
+};
+
+// Prevent mongoose from creating Users model multiple times during hot reloads
+const User = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+
+export default User;
