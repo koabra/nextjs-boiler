@@ -73,17 +73,37 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
+      // Initial sign in
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.picture = user.image;
       }
+
+      // Always fetch the latest user data from the database
+      if (token.id) {
+        try {
+          await connectDB();
+          const dbUser = await User.findById(token.id);
+          if (dbUser) {
+            token.name = dbUser.name;
+            token.email = dbUser.email;
+            token.picture = dbUser.image;
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        session.user.image = token.picture as string;
       }
       return session;
     },

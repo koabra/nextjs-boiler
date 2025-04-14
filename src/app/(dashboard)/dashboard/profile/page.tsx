@@ -27,6 +27,7 @@ export default function ProfilePage() {
   // Initialize form with session data
   useEffect(() => {
     if (session?.user) {
+      console.log("session", session);
       setUser({
         name: session.user.name || "",
         email: session.user.email || "",
@@ -40,6 +41,7 @@ export default function ProfilePage() {
 
       setIsLoading(false);
     }
+    console.log("No user? session:", session);
   }, [session]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,6 +88,7 @@ export default function ProfilePage() {
         },
       });
 
+      // Update local state
       setUser({
         ...user,
         name: formData.name,
@@ -98,9 +101,6 @@ export default function ProfilePage() {
 
       // Force refresh to update the UI everywhere
       router.refresh();
-
-      // Additional step to trigger global refresh
-      window.dispatchEvent(new Event("session-updated"));
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "An unknown error occurred";
