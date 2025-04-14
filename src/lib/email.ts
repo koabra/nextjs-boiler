@@ -1,7 +1,7 @@
 // Configuration for Plunk email service
 const PLUNK_CONFIG = {
   apiKey: process.env.PLUNK_API_KEY || "",
-  baseApiUrl: process.env.PLUNK_BASE_API_URL || "https://api.useplunk.com",
+  baseApiUrl: process.env.PLUNK_BASE_API_URL,
   appUrl: process.env.NEXTAUTH_URL || "",
 };
 
@@ -56,6 +56,8 @@ export async function sendEmail(
       },
       body: JSON.stringify(payload),
     });
+
+    console.log("response url", `${PLUNK_CONFIG.baseApiUrl}/v1/track`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

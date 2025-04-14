@@ -3,14 +3,47 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserCircle2, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+
+  // Function to update local state from session
+  const updateUserInfo = useCallback(() => {
+    if (session?.user) {
+      setUserName(session.user.name || "");
+      setUserEmail(session.user.email || "");
+    }
+  }, [session]);
+
+  // Update local state whenever session changes
+  useEffect(() => {
+    updateUserInfo();
+  }, [updateUserInfo]);
+
+  // Listen for session-updated events from other components
+  useEffect(() => {
+    const handleSessionUpdate = async () => {
+      // Force refresh the session
+      await update();
+      // Update local state
+      updateUserInfo();
+    };
+
+    // Add event listener
+    window.addEventListener("session-updated", handleSessionUpdate);
+
+    // Clean up
+    return () => {
+      window.removeEventListener("session-updated", handleSessionUpdate);
+    };
+  }, [update, updateUserInfo]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -18,6 +51,10 @@ export default function Navbar() {
 
   const isActive = (path: string) => {
     return pathname === path;
+  };
+
+  const handleSignOut = async () => {
+    await signOut({ redirect: true, callbackUrl: "/" });
   };
 
   return (
@@ -61,7 +98,7 @@ export default function Navbar() {
             {session ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700">
-                  {session.user.name || session.user.email}
+                  {userName || userEmail}
                 </span>
                 <div className="relative">
                   <button
@@ -75,7 +112,7 @@ export default function Navbar() {
                       <img
                         className="h-8 w-8 rounded-full"
                         src={session.user.image}
-                        alt={session.user.name || "Profile"}
+                        alt={userName || "Profile"}
                       />
                     ) : (
                       <UserCircle2 className="h-8 w-8 text-gray-400" />
@@ -83,7 +120,7 @@ export default function Navbar() {
                   </button>
                 </div>
                 <button
-                  onClick={() => signOut()}
+                  onClick={handleSignOut}
                   className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                 >
                   Sign out
@@ -161,23 +198,23 @@ export default function Navbar() {
                     <img
                       className="h-10 w-10 rounded-full"
                       src={session.user.image}
-                      alt={session.user.name || "Profile"}
+                      alt={userName || "Profile"}
                     />
                   ) : (
                     <UserCircle2 className="h-10 w-10 text-gray-400" />
                   )}
                   <div className="ml-3">
                     <div className="text-base font-medium text-gray-800">
-                      {session.user.name || ""}
+                      {userName || ""}
                     </div>
                     <div className="text-sm font-medium text-gray-500">
-                      {session.user.email || ""}
+                      {userEmail || ""}
                     </div>
                   </div>
                 </div>
                 <div className="mt-3 space-y-1">
                   <button
-                    onClick={() => signOut()}
+                    onClick={handleSignOut}
                     className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 w-full text-left"
                   >
                     Sign out

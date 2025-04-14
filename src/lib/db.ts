@@ -28,6 +28,8 @@ async function connectDB() {
     return cached.conn;
   }
 
+  console.log("MONGODB_URI", MONGODB_URI);
+
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,

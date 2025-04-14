@@ -55,6 +55,22 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Registration error:", error);
 
+    // Provide specific error messages for MongoDB authentication issues
+    if (error instanceof Error) {
+      if (
+        error.message.includes("authentication") ||
+        error.name === "MongoServerError"
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Database connection error. Please contact the administrator.",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json(
       {
         message:
