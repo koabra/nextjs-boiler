@@ -2,7 +2,9 @@ import mongoose from "mongoose";
 
 const MONGODB_URI =
   process.env.NODE_ENV === "development"
-    ? process.env.MONGODB_URI_LOCAL || process.env.MONGODB_URI
+    ? process.env.MONGODB_URI_LOCAL ||
+      process.env.MONGODB_URI ||
+      "mongodb://localhost:27017/nextjs-boilerplate"
     : process.env.MONGODB_URI_PROD || process.env.MONGODB_URI;
 
 // Define the cached mongoose connection type

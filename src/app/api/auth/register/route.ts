@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import PaymentCustomer from "@/models/PaymentCustomer";
 import { generateToken } from "@/lib/utils";
 import { sendVerificationEmail } from "@/lib/email";
+import { getDefaultProviderName } from "@/lib/payment";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,6 +41,26 @@ export async function POST(request: NextRequest) {
       verificationToken,
       emailVerified: false,
     });
+
+    // Get default payment provider
+    const defaultProvider = getDefaultProviderName();
+
+    try {
+      // Create a placeholder PaymentCustomer record
+      // Note: The customerId will be set when the user first interacts with the payment system
+      await PaymentCustomer.create({
+        userId: user._id,
+        provider: defaultProvider,
+        customerId: `pending_${user._id}_${Date.now()}`, // Temporary ID until a real one is assigned
+      });
+
+      console.log(
+        `Created initial PaymentCustomer record for new user ${user._id}`
+      );
+    } catch (paymentError) {
+      // Log error but don't fail registration if this part fails
+      console.error("Error creating PaymentCustomer record:", paymentError);
+    }
 
     // Send verification email using Plunk
     await sendVerificationEmail(email, name, verificationToken);

@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { PaymentProviderName } from "@/interfaces/PaymentProvider";
+import type { IPaymentCustomer } from "./PaymentCustomer";
 
 export interface IUser extends mongoose.Document {
   name: string;
@@ -13,6 +15,14 @@ export interface IUser extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
   comparePassword: (password: string) => Promise<boolean>;
+  getPaymentCustomer: (
+    provider: PaymentProviderName
+  ) => Promise<IPaymentCustomer | null>;
+  hasActiveSubscription: () => Promise<boolean>;
+  getActivePaymentMethod: () => Promise<{
+    provider: PaymentProviderName;
+    customerId: string;
+  } | null>;
 }
 
 const UserSchema = new mongoose.Schema<IUser>(
@@ -83,6 +93,74 @@ UserSchema.methods.comparePassword = async function (
   password: string
 ): Promise<boolean> {
   return await bcrypt.compare(password, this.password || "");
+};
+
+// Get payment customer for a specific provider
+UserSchema.methods.getPaymentCustomer = async function (
+  provider: PaymentProviderName
+): Promise<IPaymentCustomer | null> {
+  const PaymentCustomer = mongoose.models.PaymentCustomer;
+
+  if (!PaymentCustomer) {
+    // Import dynamically without assigning to 'module'
+    const PaymentCustomerModule = await import("@/models/PaymentCustomer");
+    return await PaymentCustomerModule.default.findOne({
+      userId: this._id,
+      provider: provider,
+    });
+  }
+
+  return await PaymentCustomer.findOne({
+    userId: this._id,
+    provider: provider,
+  });
+};
+
+// Check if user has an active subscription with any provider
+UserSchema.methods.hasActiveSubscription = async function () {
+  // Check using the payment model
+  const PaymentCustomer = mongoose.models.PaymentCustomer;
+
+  if (PaymentCustomer) {
+    const activeCustomer = await PaymentCustomer.findOne({
+      userId: this._id,
+      subscriptionStatus: "active",
+    });
+
+    if (activeCustomer) return true;
+
+    // Also check for trialing status
+    const trialingCustomer = await PaymentCustomer.findOne({
+      userId: this._id,
+      subscriptionStatus: "trialing",
+    });
+
+    if (trialingCustomer) return true;
+  }
+
+  return false;
+};
+
+// Get the active payment method (provider and customerId)
+UserSchema.methods.getActivePaymentMethod = async function () {
+  // Check using the payment model
+  const PaymentCustomer = mongoose.models.PaymentCustomer;
+
+  if (PaymentCustomer) {
+    const customer = await PaymentCustomer.findOne({
+      userId: this._id,
+      customerId: { $exists: true },
+    });
+
+    if (customer) {
+      return {
+        provider: customer.provider,
+        customerId: customer.customerId,
+      };
+    }
+  }
+
+  return null;
 };
 
 // Prevent mongoose from creating Users model multiple times during hot reloads
